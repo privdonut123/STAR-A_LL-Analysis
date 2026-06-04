@@ -45,6 +45,10 @@ item B<-N> number of files to process (default: all; in test mode, default is 5)
 
 item B<-p> message to include in summary file
 
+=item B<-b> enable batch mode (subdivides each run's file list into smaller batches)
+
+=item B<-B> batch size when batch mode is on (default 10 files per batch)
+
 =item B<-t> test mode (processes only 5 files)
 
 =item B<-V> validate MuDst files with ValidateMudsts.pl before job creation
@@ -84,6 +88,8 @@ my $NOWRITESTDERR = 0;
 my $LIMIT; # limit for get_file_list.pl
 my $NFILES; # number of files to process
 my $GETFILELIST_CMD = "";
+my $BATCH = 0;
+my $BATCHSIZE = 10;
 
 my $thiscommand = "$0";
 foreach my $arg (@ARGV){ $thiscommand = "$thiscommand" . " $arg"; }
@@ -99,6 +105,8 @@ GetOptions(
     'nowritestderr|e' => \$NOWRITESTDERR,
     'limit=i'     => \$LIMIT,
     'nfiles|N=i'   => \$NFILES,
+    'batch|b'      => \$BATCH,
+    'batchsize|B=i' => \$BATCHSIZE,
     'test|t'      => \$TEST,
     'validate|V'  => \$VALIDATE_MUDSTS,
     'uuid|u=s'    => \$UUID,
@@ -304,6 +312,8 @@ my $JobWriter = new CondorJobWriter($FileLoc, "RunAnalysis.csh", "", $UUID_short
 if( $ALMA9JOB ){ $JobWriter->SetAlmaJob(1); }
 $JobWriter->MakeJobDirs($FORCE);
 my $CondorDir = $JobWriter->GetCondorDir();
+my $ListDir = "$CondorDir/lists";
+system("/bin/mkdir -p $ListDir") == 0 or die "Unable to make '$ListDir': $!";
 
 if( $NOWRITESTDOUT ){ $JobWriter->WriteStdOut(0); }
 if( $NOWRITESTDERR ){ $JobWriter->WriteStdErr(0); }
@@ -374,36 +384,60 @@ foreach my $datafile (@DATAFILES){
     push @{ $files_by_run{$run} }, $datafile;
 }
 
-# Create one job per run group
+# Create one job per run group (or per batch within a run if batch mode is on)
+if( $BATCH && $VERBOSE>=1 ){ print "Batch mode on: up to $BATCHSIZE files per job\n"; }
+
 foreach my $run ( sort keys %files_by_run ){
     my @files = @{ $files_by_run{$run} };
     next unless @files;
 
-    my $nfiles_in_run = scalar @files;
-    my $nevents = $NEVENTS;
+    # Subdivide the run's files into batches
+    my @batches;
+    if( $BATCH ){
+        my @remaining = @files;
+        while( @remaining ){
+            push @batches, [ splice(@remaining, 0, $BATCHSIZE) ];
+        }
+    }
+    else{
+        @batches = ( \@files );
+    }
 
-    # write a file list for this run in the condor directory
-    my $listfile = "$CondorDir/Files_${run}.list";
-    open(my $lfh, '>', $listfile) or die "Could not write $listfile: $!";
-    foreach my $f (@files){ print $lfh "$f\n"; }
-    close $lfh;
+    my $nbatches = scalar @batches;
+    if( $VERBOSE>=1 && $BATCH ){
+        print "  Run $run: " . scalar(@files) . " files -> $nbatches batch(es)\n";
+    }
 
-    # transfer the list file to the job
-    $JobWriter->AddInputFiles($listfile);
+    my $batch_idx = 0;
+    foreach my $batch_ref (@batches){
+        $batch_idx++;
+        my @batch_files   = @$batch_ref;
+        my $nfiles_in_batch = scalar @batch_files;
+        my $nevents = $NEVENTS;
 
-    # compute totals
-    $totalevents += $nevents * $nfiles_in_run;
-    $numfiles++;
+        my $batch_suffix = $BATCH ? sprintf("_%03d", $batch_idx) : "";
+        my $listfile = "$ListDir/Files_${run}${batch_suffix}.list";
+        open(my $lfh, '>', $listfile) or die "Could not write $listfile: $!";
+        foreach my $f (@batch_files){ print $lfh "$f\n"; }
+        close $lfh;
 
-    if( $VERBOSE>=2 ){ print "  Creating job for run $run with $nfiles_in_run files\n"; }
+        $JobWriter->AddInputFiles($listfile);
 
-    my $outfile = "${UUID_short}_${numfiles}";
-    $JobWriter->SetArguments("$nfiles_in_run $nevents $listfile $outfile");
-    $JobWriter->WriteJob();
+        $totalevents += $nevents * $nfiles_in_batch;
+        $numfiles++;
 
-    # record in summary
-    print $fh_sum "$listfile\n";
-    foreach my $f (@files){ print $fh_sum "  $f\n"; }
+        if( $VERBOSE>=2 ){
+            my $label = $BATCH ? "run $run batch $batch_idx/$nbatches" : "run $run";
+            print "  Creating job for $label with $nfiles_in_batch files\n";
+        }
+
+        my $outfile = "${UUID_short}_${run}${batch_suffix}";
+        $JobWriter->SetArguments("$nfiles_in_batch $nevents $listfile $outfile");
+        $JobWriter->WriteJob();
+
+        print $fh_sum "$listfile\n";
+        foreach my $f (@batch_files){ print $fh_sum "  $f\n"; }
+    }
 }
 
 $JobWriter->CloseJob($numfiles);

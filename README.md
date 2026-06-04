@@ -205,6 +205,8 @@ MakeJob_runAnalysis.pl [options]
 | `--limit` | integer | 1000 (10 in test) | Limit passed to `get_file_list.pl` when using `-l` |
 | `-u` | string | random UUID | Custom name for the job directory |
 | `-p` | string | — | Message recorded in the job summary file |
+| `-b` | flag | off | Batch mode: subdivide each run's file list into smaller batches (one job per batch) |
+| `-B` | integer | `10` | Files per batch when batch mode (`-b`) is on |
 | `-t` | flag | off | Test mode: 5 files, 100 events/file |
 | `-V` | flag | off | Validate MuDst files on the worker node with `validate_mudsts.C` before running analysis |
 | `-w` | flag | off | Disable saving job stdout |
@@ -226,6 +228,9 @@ MakeJob_runAnalysis.pl [options]
   -n 10000 \
   -V
 
+# Batch mode: split each run into jobs of 15 files each
+./MakeJob_runAnalysis.pl -d /path/to/mudst_dir -o /path/to/output -b -B 15
+
 # Process only 20 files from a list, save to a named directory
 ./MakeJob_runAnalysis.pl -d input.list -N 20 -u my_run16_test -o /star/u/bmagh001/output
 
@@ -236,15 +241,20 @@ MakeJob_runAnalysis.pl [options]
 ### Job Structure
 
 For each run number group, the script writes:
-- `<outdir>/<jobid>/condor/Files_<run>.list` — file list for that run
+- `<outdir>/<jobid>/condor/lists/Files_<run>.list` — file list for that run (no batch mode)
+- `<outdir>/<jobid>/condor/lists/Files_<run>_001.list`, `Files_<run>_002.list`, … — per-batch file lists (batch mode)
 - `<outdir>/<jobid>/condor/RunAnalysis.csh` — worker-node shell script
 - `<outdir>/<jobid>/condor/runAnalysis.C` — copy of the analysis macro
 - `<outdir>/<jobid>/condor/validate_mudsts.C` — copy of the validation macro (if `-V` used)
 - `<outdir>/<jobid>/condor/.sl73_x8664_gcc485/` — compiled libraries (if present)
 - `<outdir>/<jobid>/Summary_<UUID>.list` — summary of all input files and job parameters
 
+Output files produced on the worker node follow the same naming convention as the input lists:
+- No batch mode: `<jobid>_<run>_qa.root` and `<jobid>_<run>_candidates.root`
+- Batch mode: `<jobid>_<run>_001_qa.root`, `<jobid>_<run>_001_candidates.root`, etc.
+
 `RunAnalysis.csh` receives four positional arguments from Condor:
-1. Number of files in the run group
+1. Number of files in the run group (or batch)
 2. Number of events per file
 3. Path to the file list
 4. Output file prefix
