@@ -14,7 +14,7 @@ void runAnalysis(Int_t nFiles = 1,
                  TString InputFileList = "/star/u/bmagh001/MuDst/input/st_fwd_22356022_raw_2500032.MuDst.root",
                  Int_t nEvents = 10000,
                  TString outputPrefix = "pi0_analysis",
-                 Int_t debug = 4)
+                 Int_t debug = 0)
 {
     cout << "========================================" << endl;
     cout << "Pi0 Reconstruction using EEMC Part 1 Energy Maker" << endl;
@@ -49,6 +49,13 @@ void runAnalysis(Int_t nFiles = 1,
     gSystem->Load("StEEmcTreeMaker");
     gSystem->Load("StEEmcHitMaker");
     gSystem->Load("StEEmcPool");
+    
+    if (debug < 1) {
+        gMessMgr->SetLimit("I",0); //Turn off log info messages
+        gMessMgr->SetLimit("Q",0); //turn off log warn messages
+        gMessMgr->SetLimit("W",0);
+    }
+    
     TString libPath = gSystem->GetDynamicPath();
     libPath = "./.sl73_x8664_gcc485/lib:" + libPath;
     gSystem->SetDynamicPath(libPath.Data());
@@ -163,9 +170,9 @@ void runAnalysis(Int_t nFiles = 1,
     pi0Finder->SetHistogramFile(qaFile);
     pi0Finder->SetTreeFile(candFile);
     
-    pi0Finder->SetPhotonEnergyMin(0.05);
+    pi0Finder->SetPhotonEnergyMin(1);
     pi0Finder->SetPi0EnergyMin(2.0);
-    pi0Finder->SetPi0MassMax(0.2);
+    pi0Finder->SetPi0MassMax(1);
     pi0Finder->SetAsymmetryMax(0.8);
     pi0Finder->SetDebugLevel(debug);
     pi0Finder->SetEnergyMaker(energyMaker);

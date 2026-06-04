@@ -403,7 +403,14 @@ void StPi0FinderForEEmc::FindEEmcPhotons(std::vector<EEmcParticleCandidate_t>& c
     if (mDebug > 1) {
         cout << termcolor::green << "FindEEmcPhotons: Found " << hitVec.size() << " hits from StEEmcHitMaker" << termcolor::reset << endl;
     }
-    
+
+    if (hitVec.empty()) {
+        if (mDebug > 0) {
+            cout << termcolor::yellow << "FindEEmcPhotons: No hits in hit vector, skipping event" << termcolor::reset << endl;
+        }
+        return;
+    }
+
     // Get calibrated EEMC energies from Part 1 energy maker (for quality checks)
     const EEmcEnergy_t* eemcEnergy = mEnergyMaker->getEEmcEnergyPtr();
     if (!eemcEnergy) {
