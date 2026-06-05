@@ -362,6 +362,10 @@ if( -d "$ANADIR/$starlibloc" ){
 # Add data files and create jobs
 if( $VERBOSE>=1 ){print "Grouping files by run number and creating condor jobs\n";}
 
+# Snapshot the common input files (runAnalysis.C, libraries, etc.) before the per-job
+# list files are added, so each job gets exactly: common files + its own list file.
+my $common_input_files = $JobWriter->SetInputFiles();
+
 my $numfiles = 0; # number of batches/run groups
 my $totalevents = 0;
 
@@ -382,6 +386,7 @@ foreach my $datafile (@DATAFILES){
     }
 
     push @{ $files_by_run{$run} }, $datafile;
+    if( $VERBOSE>=2 ){ print "  [group] run=$run <- $basename\n"; }
 }
 
 # Create one job per run group (or per batch within a run if batch mode is on)
@@ -421,7 +426,7 @@ foreach my $run ( sort keys %files_by_run ){
         foreach my $f (@batch_files){ print $lfh "$f\n"; }
         close $lfh;
 
-        $JobWriter->AddInputFiles($listfile);
+        $JobWriter->SetInputFiles("$common_input_files,$listfile");
 
         $totalevents += $nevents * $nfiles_in_batch;
         $numfiles++;
