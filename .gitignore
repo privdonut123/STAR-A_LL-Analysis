@@ -4,3 +4,5 @@ st_physics_16096004_raw_1000019.MuDst.root
 StRoot/StPi0FinderForEEmc/.consign
 temp_gccflags.c
 pi0_analysis_*.root
+merged_failed_mudsts.list
+merged_good_mudsts.list

@@ -13,6 +13,7 @@ This implementation reconstructs π0 candidates from photon pairs detected in th
 | `runAnalysis.C` | Top-level ROOT macro — sets up the full maker chain and runs the event loop |
 | `MakeJob_runAnalysis.pl` | Perl script that creates and submits Condor batch jobs |
 | `validate_mudsts.C` | ROOT macro to pre-screen MuDst files for EEMC data before analysis |
+| `merge_mudst_lists.pl` | Perl script that merges per-run `*_good_mudsts.list` and `*_failed_mudsts.list` files into single combined lists |
 | `StRoot/StPi0FinderForEEmc/` | Custom STAR maker that performs the π0 reconstruction |
 
 ---
@@ -179,6 +180,69 @@ root4star -b -q 'validate_mudsts.C("/path/to/mudsts", "good.list", true)'
 ```
 
 When invoked via `MakeJob_runAnalysis.pl -V`, the macro is called automatically on each worker node before `runAnalysis.C` runs.
+
+---
+
+## `merge_mudst_lists.pl` — Merge Validation Output Lists
+
+After a validation job completes, each Condor worker writes its own `*_good_mudsts.list` and `*_failed_mudsts.list` into the output directory. This script collects all of them, deduplicates, and writes two merged files ready for use as input to `MakeJob_runAnalysis.pl`.
+
+### Synopsis
+
+```
+merge_mudst_lists.pl -d <output_dir> [-g <good.list>] [-f <failed.list>] [-v <level>] [-h]
+```
+
+### Options
+
+| Option | Argument | Default | Description |
+|---|---|---|---|
+| `-d` | path | — | Directory containing `*_good_mudsts.list` and `*_failed_mudsts.list` files (required) |
+| `-g` | path | `<dir>/merged_good_mudsts.list` | Output path for the merged good-files list |
+| `-f` | path | `<dir>/merged_failed_mudsts.list` | Output path for the merged failed-files list |
+| `-v` | integer | `1` | Verbosity: `1`=summary + progress ticker; `2`=per-file counts + DEBUG lines; `3`=per-line trace |
+| `-h` | flag | — | Print help and exit |
+
+### Usage
+
+```bash
+# Merge into the same directory as the source lists (default output paths)
+./merge_mudst_lists.pl -d /path/to/validation/Output
+
+# Write merged files to a custom location
+./merge_mudst_lists.pl \
+  -d /path/to/validation/Output \
+  -g /path/to/merged_good_mudsts.list \
+  -f /path/to/merged_failed_mudsts.list
+
+# Verbose: show per-file entry counts
+./merge_mudst_lists.pl -d /path/to/validation/Output -v 2
+
+# Trace every line processed (for debugging a specific run)
+./merge_mudst_lists.pl -d /path/to/validation/Output -v 3
+```
+
+### Output
+
+Two files are written:
+
+- **`merged_good_mudsts.list`** — all unique MuDst paths that passed validation (have EEMC data). One path per line. Pass directly to `MakeJob_runAnalysis.pl -d`.
+- **`merged_failed_mudsts.list`** — all unique MuDst paths that failed validation, each annotated with the reason (`# cannot open` or `# no MuDst tree`). Failed entries are deduplicated by filepath so the same file appearing in multiple per-run lists is counted once regardless of the failure reason.
+
+Both files include a comment header with the source directory, number of source files, and total entry count.
+
+### Typical workflow
+
+```bash
+# 1. Submit validation jobs
+./MakeJob_runAnalysis.pl -V -l "..." -o /path/to/validation
+
+# 2. Wait for jobs to finish, then merge the results
+./merge_mudst_lists.pl -d /path/to/validation/Output
+
+# 3. Use the merged good list as input for the analysis jobs
+./MakeJob_runAnalysis.pl -d /path/to/validation/Output/merged_good_mudsts.list -o /path/to/analysis
+```
 
 ---
 
