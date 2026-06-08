@@ -447,6 +447,24 @@ foreach my $run ( sort keys %files_by_run ){
 
 $JobWriter->CloseJob($numfiles);
 
+# Inject "description = $(D)" into every generated .job file so condor_q shows
+# the run/batch identifier (the 4th argument, the output prefix) in the CMD column.
+my @jobfiles = glob("$CondorDir/condor_${UUID_short}*.job");
+foreach my $jobfile (@jobfiles){
+    open(my $jfh_in, '<', $jobfile) or die "Could not read '$jobfile': $!";
+    my @lines = <$jfh_in>;
+    close $jfh_in;
+    open(my $jfh_out, '>', $jobfile) or die "Could not write '$jobfile': $!";
+    foreach my $line (@lines){
+        print $jfh_out $line;
+        if( $line =~ /^Arguments\s*=/ ){
+            print $jfh_out "description  = \$(D)\n";
+        }
+    }
+    close $jfh_out;
+    if( $VERBOSE>=1 ){ print "Added job description to $jobfile\n"; }
+}
+
 # Finalize summary
 print $fh_sum "Total input files: $totalinputfiles\n";
 print $fh_sum "Total batches: $numfiles\n";
