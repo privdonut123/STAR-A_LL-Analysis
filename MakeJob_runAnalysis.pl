@@ -17,7 +17,7 @@ Getopt::Long::Configure('no_ignore_case');
 
 MakeJob_runAnalysis - Simplified script for submitting condor jobs for runAnalysis.C
 
-head1 SYNOPSIS
+=head1 SYNOPSIS
 
 MakeJob_runAnalysis.pl [-a I<path{.}>] (-d I<path> | -l I<getfilelist_args>) [-o I<path{.}>] [-w] [-u I<name>] [-n I<nevents>] [-e] [-p I<"Message">] [-t] [-V] [-v I<level{1}>] [-h]
 
@@ -35,15 +35,13 @@ MakeJob_runAnalysis.pl [-a I<path{.}>] (-d I<path> | -l I<getfilelist_args>) [-o
 
 =item B<-n> number of events to process per file (default 10000)
 
-item B<-n> number of events to process per file (default 10000)
+=item B<-e> disable writing job stderr (no StdErr saved)
 
-item B<-e> disable writing job stderr (no StdErr saved)
+=item B<-L> limit number of files returned by get_file_list.pl (default 1000, 10 in test mode)
 
-item B<-L> limit number of files returned by get_file_list.pl (default 1000, 10 in test mode)
+=item B<-N> number of files to process (default: all; in test mode, default is 5)
 
-item B<-N> number of files to process (default: all; in test mode, default is 5)
-
-item B<-p> message to include in summary file
+=item B<-p> message to include in summary file
 
 =item B<-b> enable batch mode (subdivides each run's file list into smaller batches)
 
