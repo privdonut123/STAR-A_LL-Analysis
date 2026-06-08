@@ -38,8 +38,7 @@ void validate_mudsts(
     const char* inputPath = "input_files.list",
     const char* outputFile = "good_mudsts.list",
     bool isDirectory = false,
-    bool useGetFileList = false,
-    const char* failedOutputFile = "failed_mudsts.list"
+    bool useGetFileList = false
 ) {
     // Suppress ROOT warnings about missing class dictionaries
     gErrorIgnoreLevel = kWarning + 1;
@@ -144,7 +143,6 @@ void validate_mudsts(
     
     // Validate each file for EEMC data
     vector<string> goodFiles;
-    vector<string> failedFiles;
     int fileCount = 0;
     int goodCount = 0;
     
@@ -158,7 +156,6 @@ void validate_mudsts(
         TFile* file = TFile::Open(filePath.c_str(), "READ");
         if (!file || file->IsZombie()) {
             cout << "FAIL (cannot open)" << endl;
-            failedFiles.push_back(filePath + "  # cannot open");
             continue;
         }
         cout << "  File opened successfully" << endl;
@@ -169,7 +166,6 @@ void validate_mudsts(
         TTree* mudstTree = (TTree*)file->Get("MuDst");
         if (!mudstTree) {
             cout << "FAIL (MuDst tree not found)" << endl;
-            failedFiles.push_back(filePath + "  # no MuDst tree");
             file->Close();
             delete file;
             continue;
@@ -229,29 +225,12 @@ void validate_mudsts(
     }
     
     outfile.close();
-
-    // Write failed files list
-    cout << "Writing failed files to: " << failedOutputFile << endl;
-    ofstream failfile(failedOutputFile);
-    if (!failfile.is_open()) {
-        cerr << "Error: Could not open failed output file: " << failedOutputFile << endl;
-    } else {
-        failfile << "# MuDst files that could not be opened or had no MuDst tree" << endl;
-        failfile << "# Total: " << failedFiles.size() << " / " << fileCount << endl;
-        failfile << "#" << endl;
-        for (int i = 0; i < failedFiles.size(); i++) {
-            failfile << failedFiles[i] << endl;
-        }
-        failfile.close();
-    }
-
+    
     cout << "==================================================" << endl;
     cout << "Summary:" << endl;
-    cout << "  Total files:   " << fileCount << endl;
-    cout << "  Good files:    " << goodCount << endl;
-    cout << "  Failed files:  " << failedFiles.size() << endl;
-    cout << "  Skipped files: " << (fileCount - goodCount - (int)failedFiles.size()) << endl;
-    cout << "  Good output:   " << outputFile << endl;
-    cout << "  Failed output: " << failedOutputFile << endl;
+    cout << "  Total files:  " << fileCount << endl;
+    cout << "  Good files:   " << goodCount << endl;
+    cout << "  Bad files:    " << (fileCount - goodCount) << endl;
+    cout << "  Output file:  " << outputFile << endl;
     cout << "==================================================" << endl;
 }
