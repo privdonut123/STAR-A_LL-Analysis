@@ -95,7 +95,7 @@ Int_t StPi0FinderForEEmc::Init()
     h2_photon_position->SetYTitle("Y [cm]");
     
     // ========== Pi0 QA Histograms ==========
-    h1_pi0_mass = new TH1F("h1_pi0_mass", "Pi0 Invariant Mass", 150, 0, 0.3);
+    h1_pi0_mass = new TH1F("h1_pi0_mass", "Pi0 Invariant Mass", 1000, 0, 2);
     h1_pi0_mass->SetXTitle("M [GeV/c^2]");
     h1_pi0_mass->SetYTitle("Counts");
     
@@ -120,7 +120,7 @@ Int_t StPi0FinderForEEmc::Init()
     h1_pi0_asymmetry->SetYTitle("Counts");
     
     h2_pi0_mass_vs_energy = new TH2F("h2_pi0_mass_vs_energy", "Pi0 Mass vs Energy",
-                                     100, 0, 100, 150, 0, 0.3);
+                                     100, 0, 100, 150, 0, 2);
     h2_pi0_mass_vs_energy->SetXTitle("Energy [GeV]");
     h2_pi0_mass_vs_energy->SetYTitle("M [GeV/c^2]");
     
