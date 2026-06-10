@@ -221,7 +221,18 @@ else{
     }
     else{
         if( -f "$DATA" ){
-            push @DATAFILES, $DATA;
+            if( $DATA =~ /\.list$/ ){
+                open(my $lfh, '<', $DATA) or die "Could not open '$DATA': $!";
+                while(my $line = <$lfh>){
+                    chomp $line;
+                    next if $line eq "" || $line =~ /^#/;
+                    push @DATAFILES, $line;
+                }
+                close $lfh;
+            }
+            else{
+                push @DATAFILES, $DATA;
+            }
         }
         elsif( -d "$DATA" ){
             opendir my $dh, "$DATA" or die "Could not open directory '$DATA': $!";
